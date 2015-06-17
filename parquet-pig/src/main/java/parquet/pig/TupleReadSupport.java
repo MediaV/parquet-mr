@@ -140,12 +140,19 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   private static FieldSchema union(FieldSchema mergedFieldSchema, FieldSchema newFieldSchema) {
-    if (!mergedFieldSchema.alias.equals(newFieldSchema.alias)
+    if ((mergedFieldSchema.alias != null && !mergedFieldSchema.alias.equals(newFieldSchema.alias))
         || mergedFieldSchema.type != newFieldSchema.type) {
       throw new IncompatibleSchemaModificationException("Incompatible Pig schema change: " + mergedFieldSchema + " can not accept");
     }
     try {
-      return new FieldSchema(mergedFieldSchema.alias, union(mergedFieldSchema.schema, newFieldSchema.schema), mergedFieldSchema.type);
+      FieldSchema resultFieldSchema = null;
+      // In Pig, Map only has one field, and its only field has no alias.
+      if (mergedFieldSchema.type == 100) {
+        resultFieldSchema = new FieldSchema(mergedFieldSchema.alias, new Schema(union(mergedFieldSchema.schema.getField(0), newFieldSchema.schema.getField(0))), mergedFieldSchema.type);
+      } else {
+        resultFieldSchema = new FieldSchema(mergedFieldSchema.alias, union(mergedFieldSchema.schema, newFieldSchema.schema), mergedFieldSchema.type);
+      }
+      return resultFieldSchema;
     } catch (FrontendException e) {
       throw new SchemaConversionException(e);
     }
